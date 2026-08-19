@@ -65,9 +65,48 @@ def update_product(product_id: int, payload: dict) -> dict:
     return _handle_response(response)
 
 
-def delete_product(product_id: int) -> None:
-    response = get_client().delete(f"/products/{product_id}", headers=get_headers())
-    _handle_response(response)
+def deactivate_product(product_id: int) -> dict:
+    response = get_client().patch(
+        f"/products/{product_id}/deactivate", headers=get_headers()
+    )
+    return _handle_response(response)
+
+
+def activate_product(product_id: int) -> dict:
+    response = get_client().patch(
+        f"/products/{product_id}/activate", headers=get_headers()
+    )
+    return _handle_response(response)
+
+
+def get_inactive_products() -> list[dict]:
+    response = get_client().get("/products/inactive", headers=get_headers())
+    return _handle_response(response)
+
+
+# --- Persons ---
+
+def get_persons_by_role(role: str) -> list[dict]:
+    response = get_client().get(
+        "/persons/", params={"role": role}, headers=get_headers()
+    )
+    return _handle_response(response)
+
+
+# --- Sales ---
+
+def create_sale(payload: dict) -> dict:
+    response = get_client().post("/sales/", json=payload, headers=get_headers())
+    return _handle_response(response)
+
+
+# --- Grain Purchases ---
+
+def create_grain_purchase(payload: dict) -> dict:
+    response = get_client().post(
+        "/grain-purchases/", json=payload, headers=get_headers()
+    )
+    return _handle_response(response)
 
 
 # --- Inventory ---

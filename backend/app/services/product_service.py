@@ -40,6 +40,9 @@ class ProductService:
     async def list_products(self) -> List[Product]:
         return await self.repo.list_all()
 
+    async def list_inactive_products(self) -> List[Product]:
+        return await self.repo.list_inactive()
+
     async def update_product(self, product_id: int, data: ProductUpdate) -> Product:
         # Ensure the product exists first
         await self.get_product(product_id)
@@ -62,10 +65,15 @@ class ProductService:
         product = await self.repo.update(product_id, data)
         return product
 
-    async def delete_product(self, product_id: int) -> None:
+    async def deactivate_product(self, product_id: int) -> Product:
         # Ensure the product exists first
         await self.get_product(product_id)
-        await self.repo.delete(product_id)
+        return await self.repo.set_active(product_id, False)
+
+    async def activate_product(self, product_id: int) -> Product:
+        # Ensure the product exists first
+        await self.get_product(product_id)
+        return await self.repo.set_active(product_id, True)
 
     async def reduce_stock(self, product_id: int, quantity: int) -> Product:
         product = await self.get_product(product_id)

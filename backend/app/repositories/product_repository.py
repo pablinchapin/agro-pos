@@ -1,9 +1,11 @@
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import DomainError
 from app.models.product import Product
+from app.models.sale_item import SaleItem
 from app.schemas.product import ProductCreate, ProductUpdate
 
 
@@ -24,8 +26,25 @@ class ProductRepository:
         return result.scalar_one_or_none()
 
     async def list_all(self) -> List[Product]:
-        result = await self.db.execute(select(Product))
+        result = await self.db.execute(
+            select(Product).where(Product.is_active == True)  # noqa: E712
+        )
         return list(result.scalars().all())
+
+    async def list_inactive(self) -> List[Product]:
+        result = await self.db.execute(
+            select(Product).where(Product.is_active == False)  # noqa: E712
+        )
+        return list(result.scalars().all())
+
+    async def set_active(self, product_id: int, is_active: bool) -> Optional[Product]:
+        product = await self.get_by_id(product_id)
+        if product is None:
+            return None
+        product.is_active = is_active
+        await self.db.commit()
+        await self.db.refresh(product)
+        return product
 
     async def create(self, data: ProductCreate) -> Product:
         product = Product(**data.model_dump())
@@ -49,6 +68,15 @@ class ProductRepository:
         product = await self.get_by_id(product_id)
         if product is None:
             return False
+        result = await self.db.execute(
+            select(func.count()).select_from(SaleItem).where(
+                SaleItem.product_id == product_id
+            )
+        )
+        if result.scalar_one() > 0:
+            raise DomainError(
+                f"Product {product_id} has sale history and cannot be deleted"
+            )
         await self.db.delete(product)
         await self.db.commit()
         return True
