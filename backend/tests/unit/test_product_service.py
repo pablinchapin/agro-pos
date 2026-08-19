@@ -26,6 +26,7 @@ def make_product(**kwargs) -> Product:
         price=Decimal("10.50"),
         stock=100,
         min_stock=10,
+        is_active=True,
     )
     defaults.update(kwargs)
     product = Product()
@@ -244,30 +245,89 @@ async def test_update_product_same_name_allowed():
 
 
 # ---------------------------------------------------------------------------
-# delete_product
+# deactivate_product / activate_product
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_delete_product_success():
+async def test_deactivate_product_success():
     mock_repo = AsyncMock()
     mock_repo.get_by_id.return_value = make_product(id=1)
-    mock_repo.delete.return_value = True
+    deactivated = make_product(id=1, is_active=False)
+    mock_repo.set_active.return_value = deactivated
 
     service = make_service(mock_repo)
-    await service.delete_product(1)
+    result = await service.deactivate_product(1)
 
-    mock_repo.delete.assert_awaited_once_with(1)
+    mock_repo.set_active.assert_awaited_once_with(1, False)
+    assert result is deactivated
 
 
 @pytest.mark.asyncio
-async def test_delete_product_not_found_raises():
+async def test_deactivate_product_not_found_raises():
     mock_repo = AsyncMock()
     mock_repo.get_by_id.return_value = None
 
     service = make_service(mock_repo)
 
     with pytest.raises(NotFoundError):
-        await service.delete_product(999)
+        await service.deactivate_product(999)
+
+    mock_repo.set_active.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_activate_product_success():
+    mock_repo = AsyncMock()
+    mock_repo.get_by_id.return_value = make_product(id=1, is_active=False)
+    activated = make_product(id=1, is_active=True)
+    mock_repo.set_active.return_value = activated
+
+    service = make_service(mock_repo)
+    result = await service.activate_product(1)
+
+    mock_repo.set_active.assert_awaited_once_with(1, True)
+    assert result is activated
+
+
+@pytest.mark.asyncio
+async def test_activate_product_not_found_raises():
+    mock_repo = AsyncMock()
+    mock_repo.get_by_id.return_value = None
+
+    service = make_service(mock_repo)
+
+    with pytest.raises(NotFoundError):
+        await service.activate_product(999)
+
+    mock_repo.set_active.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# list_inactive_products
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_list_inactive_products_returns_all():
+    mock_repo = AsyncMock()
+    products = [make_product(id=1, is_active=False), make_product(id=2, is_active=False)]
+    mock_repo.list_inactive.return_value = products
+
+    service = make_service(mock_repo)
+    result = await service.list_inactive_products()
+
+    mock_repo.list_inactive.assert_awaited_once()
+    assert result == products
+
+
+@pytest.mark.asyncio
+async def test_list_inactive_products_empty():
+    mock_repo = AsyncMock()
+    mock_repo.list_inactive.return_value = []
+
+    service = make_service(mock_repo)
+    result = await service.list_inactive_products()
+
+    assert result == []
 
 
 # ---------------------------------------------------------------------------

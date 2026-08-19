@@ -3,10 +3,11 @@ import streamlit as st
 
 from shared.api_client import get_grain_inventory, get_product_inventory
 from shared.components import show_api_error
+from shared.translations import t
 
-st.title("Inventario")
+st.title(t("inventory.title"))
 
-tab_productos, tab_granos = st.tabs(["Productos", "Granos"])
+tab_productos, tab_granos = st.tabs([t("inventory.tab_products"), t("inventory.tab_grains")])
 
 with tab_productos:
     try:
@@ -16,19 +17,39 @@ with tab_productos:
         products = []
 
     if not products:
-        st.info("No hay productos registrados.")
+        st.info(t("inventory.none_products"))
     else:
         low_stock = [p for p in products if p["low_stock"]]
         if low_stock:
-            st.warning(f"⚠️ {len(low_stock)} producto(s) con stock bajo")
+            st.warning(f"⚠️ {t('inventory.low_stock_alert').format(count=len(low_stock))}")
             for p in low_stock:
                 st.error(
-                    f"**{p['name']}** — stock: {p['stock']} {p['unit']} "
-                    f"(mínimo: {p['min_stock']})"
+                    t("inventory.low_stock_detail").format(
+                        name=p["name"], stock=p["stock"], unit=p["unit"], min_stock=p["min_stock"]
+                    )
                 )
             st.divider()
 
-        st.dataframe(products, hide_index=True, use_container_width=True)
+        category_labels = t("category")
+        low_stock_yes = t("inventory.low_stock_yes")
+        low_stock_no = t("inventory.low_stock_no")
+        display_products = [
+            {
+                "name": p["name"],
+                "category": category_labels.get(p["category"], p["category"]),
+                "unit": p["unit"],
+                "stock": p["stock"],
+                "min_stock": p["min_stock"],
+                "low_stock": low_stock_yes if p["low_stock"] else low_stock_no,
+            }
+            for p in products
+        ]
+        st.dataframe(
+            display_products,
+            hide_index=True,
+            width='stretch',
+            column_config=t("inventory.columns_products"),
+        )
 
 with tab_granos:
     try:
@@ -38,6 +59,19 @@ with tab_granos:
         grains = []
 
     if not grains:
-        st.info("No hay tipos de grano registrados.")
+        st.info(t("inventory.none_grains"))
     else:
-        st.dataframe(grains, hide_index=True, use_container_width=True)
+        display_grains = [
+            {
+                "grain_type_name": g["grain_type_name"],
+                "unit": g["unit"],
+                "total_stock": g["total_stock"],
+            }
+            for g in grains
+        ]
+        st.dataframe(
+            display_grains,
+            hide_index=True,
+            width='stretch',
+            column_config=t("inventory.columns_grains"),
+        )
